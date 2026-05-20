@@ -1,0 +1,394 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=3.0, user-scalable=yes">
+    <title>Loading...</title>
+
+    <!-- ============================================================ -->
+    <!--                                                                -->
+    <!--   📝 여기만 수정하세요 (Edit only this section)                  -->
+    <!--                                                                -->
+    <!--   사용법:                                                        -->
+    <!--   1. 이 index.html 파일과 PDF 파일을 같은 폴더에 두세요             -->
+    <!--   2. 아래 PDF_FILE에 PDF 파일명을 입력하세요 (따옴표 사이만!)        -->
+    <!--   3. PAGE_TITLE에 브라우저 탭에 표시될 이름을 입력하세요             -->
+    <!--   4. 저장 후 브라우저에서 index.html을 열어 확인하세요              -->
+    <!--                                                                -->
+    <!--   ⚠️ 따옴표(')는 지우지 마세요. 따옴표 안의 글자만 바꾸세요         -->
+    <!--                                                                -->
+    <!-- ============================================================ -->
+    <script>
+        const CONFIG = {
+            // PDF 파일명 (같은 폴더에 있어야 함)
+            // 예: 'my_portfolio.pdf', 'resume_2026.pdf'
+            PDF_FILE: 'portfolio_fin_30.pdf',
+
+            // 브라우저 탭에 표시될 제목
+            // 예: '홍길동 포트폴리오', 'Jane Doe Resume'
+            PAGE_TITLE: 'Kyungsub Park',
+
+            // 배경 테마: 'dark' (어두움) 또는 'light' (밝음)
+            THEME: 'dark',
+        };
+
+        document.title = CONFIG.PAGE_TITLE;
+        document.documentElement.style.setProperty(
+            '--bg-color',
+            CONFIG.THEME === 'light' ? '#e8e8e8' : '#525659'
+        );
+    </script>
+    <!-- ============================================================ -->
+    <!--   ⚠️ 아래는 수정하지 마세요 (Do not edit below)                  -->
+    <!-- ============================================================ -->
+
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        html, body {
+            width: 100%;
+            height: 100%;
+            background-color: var(--bg-color, #525659);
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Apple SD Gothic Neo', sans-serif;
+            overflow: hidden;
+        }
+
+        #viewer {
+            width: 100%;
+            height: 100vh;
+            overflow: auto;
+            -webkit-overflow-scrolling: touch;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px 0;
+            gap: 16px;
+            touch-action: pan-x pan-y pinch-zoom;
+        }
+
+        .page-canvas {
+            display: block;
+            max-width: 100%;
+            height: auto;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+            background: white;
+        }
+
+        #toolbar {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(40, 40, 40, 0.9);
+            color: white;
+            padding: 10px 16px;
+            border-radius: 24px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-size: 14px;
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            box-shadow: 0 4px 16px rgba(0, 0, 0, 0.4);
+            z-index: 10;
+            user-select: none;
+        }
+
+        #toolbar button {
+            background: rgba(255, 255, 255, 0.15);
+            color: white;
+            border: none;
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            cursor: pointer;
+            font-size: 18px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: background 0.2s;
+        }
+
+        #toolbar button:hover {
+            background: rgba(255, 255, 255, 0.25);
+        }
+
+        #toolbar button:disabled {
+            opacity: 0.4;
+            cursor: not-allowed;
+        }
+
+        #pageInfo {
+            min-width: 60px;
+            text-align: center;
+        }
+
+        #loading {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: white;
+            font-size: 16px;
+            text-align: center;
+            z-index: 20;
+        }
+
+        .spinner {
+            width: 40px;
+            height: 40px;
+            border: 3px solid rgba(255, 255, 255, 0.2);
+            border-top-color: white;
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+            margin: 0 auto 12px;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        @media screen and (max-width: 768px) {
+            #viewer {
+                padding: 10px 0;
+                gap: 10px;
+            }
+
+            #toolbar {
+                bottom: 12px;
+                padding: 8px 12px;
+                font-size: 13px;
+            }
+
+            #toolbar button {
+                width: 36px;
+                height: 36px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div id="viewer"></div>
+
+    <div id="loading">
+        <div class="spinner"></div>
+        <div>PDF 로딩중...</div>
+    </div>
+
+    <div id="toolbar" style="display: none;">
+        <button id="prevBtn" aria-label="이전 페이지">‹</button>
+        <span id="pageInfo">1 / 1</span>
+        <button id="nextBtn" aria-label="다음 페이지">›</button>
+        <button id="zoomOutBtn" aria-label="축소">−</button>
+        <button id="zoomInBtn" aria-label="확대">+</button>
+    </div>
+
+    <script type="module">
+        import * as pdfjsLib from 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.0.379/pdf.min.mjs';
+
+        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/4.0.379/pdf.worker.min.mjs';
+
+        const viewer = document.getElementById('viewer');
+        const loading = document.getElementById('loading');
+        const toolbar = document.getElementById('toolbar');
+        const pageInfo = document.getElementById('pageInfo');
+        const prevBtn = document.getElementById('prevBtn');
+        const nextBtn = document.getElementById('nextBtn');
+        const zoomInBtn = document.getElementById('zoomInBtn');
+        const zoomOutBtn = document.getElementById('zoomOutBtn');
+
+        let pdfDoc = null;
+        let currentPage = 1;
+        let scale = 1.0;
+        let pageCanvases = [];
+        let renderToken = 0;
+
+        function getDisplayScale(viewport) {
+            const containerWidth = viewer.clientWidth - 40;
+            const baseScale = Math.min(containerWidth / viewport.width, 1.5);
+            return baseScale * scale;
+        }
+
+        async function renderPage(pageNum, token) {
+            const page = await pdfDoc.getPage(pageNum);
+            if (token !== renderToken) return null;
+
+            const baseViewport = page.getViewport({ scale: 1 });
+            const displayScale = getDisplayScale(baseViewport);
+            const devicePixelRatio = window.devicePixelRatio || 1;
+            const renderViewport = page.getViewport({ scale: displayScale * devicePixelRatio });
+
+            const canvas = document.createElement('canvas');
+            canvas.className = 'page-canvas';
+            canvas.width = renderViewport.width;
+            canvas.height = renderViewport.height;
+            canvas.style.width = (renderViewport.width / devicePixelRatio) + 'px';
+            canvas.style.height = (renderViewport.height / devicePixelRatio) + 'px';
+
+            const ctx = canvas.getContext('2d');
+            await page.render({ canvasContext: ctx, viewport: renderViewport }).promise;
+
+            return canvas;
+        }
+
+        async function renderAllPages() {
+            renderToken++;
+            const token = renderToken;
+            viewer.innerHTML = '';
+            pageCanvases = [];
+
+            for (let i = 1; i <= pdfDoc.numPages; i++) {
+                const canvas = await renderPage(i, token);
+                if (token !== renderToken) return;
+                if (canvas) {
+                    viewer.appendChild(canvas);
+                    pageCanvases.push(canvas);
+                }
+            }
+        }
+
+        function updatePageInfo() {
+            pageInfo.textContent = `${currentPage} / ${pdfDoc.numPages}`;
+            prevBtn.disabled = currentPage <= 1;
+            nextBtn.disabled = currentPage >= pdfDoc.numPages;
+        }
+
+        function scrollToPage(pageNum, behavior = 'smooth') {
+            const canvas = pageCanvases[pageNum - 1];
+            if (canvas) {
+                canvas.scrollIntoView({ behavior, block: 'start' });
+            }
+        }
+
+        prevBtn.addEventListener('click', () => {
+            if (currentPage > 1) {
+                currentPage--;
+                scrollToPage(currentPage);
+                updatePageInfo();
+            }
+        });
+
+        nextBtn.addEventListener('click', () => {
+            if (currentPage < pdfDoc.numPages) {
+                currentPage++;
+                scrollToPage(currentPage);
+                updatePageInfo();
+            }
+        });
+
+        let zoomDebounce;
+        function applyZoom(newScale) {
+            scale = Math.max(0.5, Math.min(3, newScale));
+            clearTimeout(zoomDebounce);
+            zoomDebounce = setTimeout(async () => {
+                await renderAllPages();
+                scrollToPage(currentPage, 'auto');
+            }, 100);
+        }
+
+        zoomInBtn.addEventListener('click', () => applyZoom(scale + 0.25));
+        zoomOutBtn.addEventListener('click', () => applyZoom(scale - 0.25));
+
+        viewer.addEventListener('scroll', () => {
+            const scrollTop = viewer.scrollTop;
+            const viewerHeight = viewer.clientHeight;
+            for (let i = 0; i < pageCanvases.length; i++) {
+                const canvas = pageCanvases[i];
+                const top = canvas.offsetTop - viewer.offsetTop;
+                const bottom = top + canvas.offsetHeight;
+                if (top <= scrollTop + viewerHeight / 2 && bottom >= scrollTop + viewerHeight / 2) {
+                    if (currentPage !== i + 1) {
+                        currentPage = i + 1;
+                        updatePageInfo();
+                    }
+                    break;
+                }
+            }
+        });
+
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'ArrowLeft' || e.key === 'PageUp') prevBtn.click();
+            if (e.key === 'ArrowRight' || e.key === 'PageDown') nextBtn.click();
+            if ((e.key === '+' || e.key === '=') && (e.ctrlKey || e.metaKey)) {
+                e.preventDefault();
+                applyZoom(scale + 0.25);
+            }
+            if (e.key === '-' && (e.ctrlKey || e.metaKey)) {
+                e.preventDefault();
+                applyZoom(scale - 0.25);
+            }
+        });
+
+        let initialPinchDistance = 0;
+        let initialPinchScale = 1;
+
+        function getPinchDistance(touches) {
+            const dx = touches[0].clientX - touches[1].clientX;
+            const dy = touches[0].clientY - touches[1].clientY;
+            return Math.sqrt(dx * dx + dy * dy);
+        }
+
+        viewer.addEventListener('touchstart', (e) => {
+            if (e.touches.length === 2) {
+                initialPinchDistance = getPinchDistance(e.touches);
+                initialPinchScale = scale;
+            }
+        }, { passive: true });
+
+        viewer.addEventListener('touchmove', (e) => {
+            if (e.touches.length === 2 && initialPinchDistance > 0) {
+                e.preventDefault();
+                const currentDistance = getPinchDistance(e.touches);
+                const ratio = currentDistance / initialPinchDistance;
+                const newScale = Math.max(0.5, Math.min(3, initialPinchScale * ratio));
+                if (Math.abs(newScale - scale) >= 0.1) {
+                    applyZoom(newScale);
+                }
+            }
+        }, { passive: false });
+
+        viewer.addEventListener('touchend', (e) => {
+            if (e.touches.length < 2) {
+                initialPinchDistance = 0;
+            }
+        });
+
+        let resizeTimeout;
+        window.addEventListener('resize', () => {
+            clearTimeout(resizeTimeout);
+            resizeTimeout = setTimeout(async () => {
+                if (pdfDoc) {
+                    await renderAllPages();
+                    scrollToPage(currentPage, 'auto');
+                }
+            }, 300);
+        });
+
+        try {
+            pdfDoc = await pdfjsLib.getDocument(CONFIG.PDF_FILE).promise;
+            await renderAllPages();
+            loading.style.display = 'none';
+            toolbar.style.display = 'flex';
+            updatePageInfo();
+        } catch (err) {
+            const isNotFound = err.name === 'MissingPDFException' || /404|not found/i.test(err.message);
+            loading.innerHTML = isNotFound
+                ? `<div style="color: #ff6b6b; max-width: 400px; line-height: 1.6;">
+                      <div style="font-size: 20px; margin-bottom: 12px;">⚠️ PDF 파일을 찾을 수 없습니다</div>
+                      <div style="font-size: 14px; color: #ddd;">
+                        찾는 파일: <code style="background: rgba(0,0,0,0.3); padding: 2px 6px; border-radius: 4px;">${CONFIG.PDF_FILE}</code><br><br>
+                        ✓ index.html과 같은 폴더에 PDF 파일이 있는지 확인하세요<br>
+                        ✓ 파일명의 대소문자와 띄어쓰기가 정확한지 확인하세요<br>
+                        ✓ 파일 확장자(.pdf)가 포함되어 있는지 확인하세요
+                      </div>
+                   </div>`
+                : `<div style="color: #ff6b6b;">PDF를 불러올 수 없습니다.<br>${err.message}</div>`;
+            console.error(err);
+        }
+    </script>
+</body>
+</html>
